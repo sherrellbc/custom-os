@@ -119,7 +119,7 @@ struct gate_desc {
  */
 #define SEGMENT_FLAGS(g,db,avl,p,dpl,s,type)  (((g) << 15) | ((db) << 14) | ((avl) << 12) | ((p) << 7) | ((dpl) << 5) | ((s) << 4) | (type))
 #define GDT_DESCRIPTOR_ENTRY(_base, _limit, _flags) \
-    { \
+    (struct segment_desc) { \
         .dword0 = (((_base) & 0xffff) << 16) | ((_limit) & 0xffff), \
         .dword1 = ((_base) & 0xff000000) | (((_flags) & 0xd0ff) << 8) | ((_limit) & 0xf0000) | ((_base) & 0xff0000 >> 16) \
     } \
@@ -128,7 +128,7 @@ struct gate_desc {
 #define SELECTOR(rpl, ti, index)    ((index << 3) | (ti << 2) | (rpl & 0x3))
 
 #define LDT_DESCRIPTOR_ENTRY(_handler, _selector, _type) \
-    { \
+    (struct gate_desc) { \
         .handler_addr0 = (uint16_t) ((_handler) & 0xffff), \
         .selector = (_selector), \
         .mbz = 0, \
@@ -139,11 +139,6 @@ struct gate_desc {
 //        .p = 1,
 //        .dpl = 3,
 //        .s = 0,
-
-
-
-
-
 
 
 /*
@@ -159,42 +154,79 @@ struct desc_table_ptr{
 
 static inline void load_gdt(struct desc_table_ptr *src)
 {
-    UNUSED(src);
     asm volatile("lgdt %0": :"m" (*src));
 }
 
 
 static inline void store_gdt(struct desc_table_ptr *dst)
 {
-    UNUSED(dst);
     asm volatile("sgdt %0": :"m" (*dst));
 }
 
 
 static inline void load_idt(struct desc_table_ptr *src)
 {
-    UNUSED(src);
     asm volatile("lidt %0": :"m" (*src));
 }
 
 
 static inline void store_idt(struct desc_table_ptr *dst)
 {
-    UNUSED(dst);
     asm volatile("sidt %0": :"m" (*dst));
 }
 
 
 /* 
- * Install an early default Global Descriptor Table for kernel and userspace
+ * Install a default default Global Descriptor Table (GDT) for kernel and userspace
  */
 void gdt_setup(void);
 
 
 /*
- * Install an early Interrupt Descriptor Table with default handler entries
+ * Set a specified entry in the currently installed GDT and optionally force a GDT reload
+ *
+ * @param slot      The desired slot to retrieve
+ * @param entry     The entry to be installed (only copied, no references are maintained)
+ * @param reload    A switch to force the GDT to be reloaded/cached by the CPU
+ * @return          Non-zero if failure
+ */ 
+int gdt_set_slot(int slot, struct segment_desc *entry, int reload);
+
+
+/*
+ * Get a specified entry from the currently installed GDT
+ *
+ * @param slot      The desired slot to retrieve
+ * @param dst       A caller-allocated location to store the retrieved entry
+ * @return          Non-zero if failure
+ */ 
+int gdt_get_slot(int slot, struct segment_desc *dst);
+
+
+/*
+ * Install a default Interrupt Descriptor Table (IDT) with default handler entries
  */
 void idt_setup(void);
+
+
+/*
+ * Set a specified entry from the currently installed IDT
+ *
+ * @param slot      The desired slot to retrieve
+ * @param entry     The entry to be installed (only copied, no references are maintained)
+ * @return          Non-zero if failure
+ */ 
+int idt_set_slot(int slot, struct gate_desc *entry);
+
+
+/*
+ * Get a specified entry from the currently installed IDT
+ *
+ * @param slot      The desired slot to retrieve
+ * @param dst       A caller-allocated location to store the retrieved entry
+ * @return          Non-zero if failure
+ */ 
+int idt_get_slot(int slot, struct gate_desc *dst);
 
 
 #endif /* _ASM_X86_SEGMENT_H */

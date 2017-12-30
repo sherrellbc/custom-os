@@ -1,22 +1,19 @@
-#include <kernel/interrupt.h>
-#include <arch/irq.h>
+#include <mock.h>
 
 
-
-void irq_enable(unsigned int irq)
+void irq_enable(irq_t irq)
 {
-    arch_irq_enable(irq);
+    plat.irq_enable(irq);
 }
 
 
-void irq_disable(unsigned int irq)
+void irq_disable(irq_t irq)
 {
-    arch_irq_disable(irq);
+    plat.irq_disable(irq);
 }
 
 
-void irq_setmask(uint16_t mask)
+void irq_setmask(irq_t mask)
 {
-    //Do other interrupt bookkeeping (to keep us from having to do this slow IO)
-    arch_irq_setmask(mask);
+    plat.irq_setmask(mask);
 }

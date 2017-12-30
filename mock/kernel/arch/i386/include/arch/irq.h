@@ -1,51 +1,36 @@
 #ifndef _ARCH_X86_IRQ_H
 #define _ARCH_X86_IRQ_H
 
-#include <arch/pic8259.h>
-
-#define disable_ints        x86_disable_interrupts
-#define enable_ints         x86_enable_interrupts
-#define arch_irq_setmask    pic8259_setmask
+#include "irq/time.h"
+#include "irq/cmos.h"
+#include "irq/keyboard.h"
 
 
-static inline void io_wait(void)
-{
-    asm volatile("jmp 1f\n jump 1f\n jmp 1f\n");
-}
+/* The default system handler, used to detect programming/configuration issues */
+void default_handler(void);
 
 
-static inline void x86_enable_interrupts(void)
-{
-    asm volatile("sti\n");
-}
+enum irq_hw {
+    IRQ_HW_PIC8259,
+    IRQ_HW_APIC,
+};
 
-
-static inline void x86_disable_interrupts(void)
-{
-    asm volatile("cli");
-}
+/*
+ * Early interrupt initialization 
+ */
+void irq_init(void);
 
 
 /*
- * Architecture-specific function to enable a specific IRQ
- *
- * @param   irq : The IRQ number to enable
+ * Platform global interrupt enable
  */
-void arch_irq_enable(unsigned int irq);
+void arch_global_irq_enable(void);
 
 
 /*
- * Architecture-specific function to disable a specific IRQ
- *
- * @param   irq : The IRQ number to disable
+ * Platform global interrupt disable
  */
-void arch_irq_disable(unsigned int irq);
-
-
-/*
- * Early interrupt initialization (TODO: This probably needs to be refactored more)
- */
-void int_init(void);
+void arch_global_irq_disable(void);
 
 
 #endif /* _ARCH_X86_IRQ_H */

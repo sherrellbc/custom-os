@@ -1,5 +1,6 @@
 # Output config
 #SYSROOT     ?= $(shell pwd)/../sysroot
+SRCROOT         = ../../
 SYSROOT         = .sysroot
 BUILD           = .build
 INCLUDEDIR      = /usr/include
@@ -27,10 +28,10 @@ CFLAGS      += -ffreestanding -Wall -Wextra -Iinclude -I$(ARCH_DIR)/include -Wer
 LIBS        += -lc -lgcc -lmultiboot
 LDFLAGS     += -nostdlib
 
-KOBJS=  printk/printk.o     \
+KOBJS=  debug/printk/printk.o     \
         panic.o             \
         kernel.o            \
-        irq/irq.o           \
+        irq/irq.o \
 
 CLEAN_OBJS=$(KOBJS)
 
@@ -91,7 +92,6 @@ run: sysroot-iso
 clean:
 	rm -rf $(BUILD)
 	rm -rf $(SYSROOT)
-	rm -rf *.a
 	rm -f $(CLEAN_OBJS) $(CLEAN_OBJS:.o=.d) $(KOBJS:.o=.d)
 	rm -f *.iso *.elf
 

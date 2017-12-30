@@ -2,6 +2,7 @@
 #define _PIC8259_H
 
 #include <stdint.h>
+#include <irq.h>
 #include <arch/io.h>
 
 
@@ -37,11 +38,13 @@ static inline void pic_outb(uint8_t value, unsigned int port)
 }
 
 
-void pic8259_mask_irq(unsigned int irq);
-void pic8259_unmask_irq(unsigned int irq);
-void pic8259_setmask(uint16_t mask);
+void pic8259_init(void);
+void pic8259_mask_irq(irq_t irq);
+void pic8259_unmask_irq(irq_t irq);
+void pic8259_setmask(irq_t mask);
 uint16_t pic8259_getmask(void);
 void pic8259_flush(void);
+void pic8259_eoi(void);
 
 
 #endif /* _PIC8259_H */

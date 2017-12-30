@@ -7,6 +7,7 @@ LIBC_OBJS =\
     $(LIBC_LOCALDIR)/string/strncmp.o \
     $(LIBC_LOCALDIR)/string/strlen.o \
     $(LIBC_LOCALDIR)/string/memcmp.o \
+    $(LIBC_LOCALDIR)/string/memcpy.o \
     $(LIBC_LOCALDIR)/string/memmove.o \
     $(LIBC_LOCALDIR)/string/memset.o \
     $(LIBC_LOCALDIR)/string/strrev.o \
@@ -15,7 +16,7 @@ LIBC_OBJS =\
     $(LIBC_LOCALDIR)/stdio/putchar.o \
     $(LIBC_LOCALDIR)/stdio/snprintf.o \
 
-CLEAN_OBJS += $(LIBC_OBJS)
+CLEAN_OBJS += $(LIBC_OBJS) $(LIBC_LOCALDIR)/libc.a
 
 install-libc-build-headers: 
 	mkdir -p $(BUILD)/$(LIBC_BUILD_INCLUDE_INSTALL_DIR)

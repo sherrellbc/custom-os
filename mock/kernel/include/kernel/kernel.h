@@ -1,7 +1,13 @@
 #ifndef _SATIRE_KERNEL_H
 #define _SATIRE_KERNEL_H
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+
 #include "kdebug.h"
+//TODO: #include <kreturn.h>
 
 
 /*

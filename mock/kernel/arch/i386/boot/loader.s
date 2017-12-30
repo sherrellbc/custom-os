@@ -8,7 +8,7 @@
 
 .extern __stack
 .extern exit_panic 
-.extern x86_boot        # Extern to be seen from _this_ file at link-time
+.extern x86_boot_legacy # Extern to be seen from _this_ file at link-time
 .global kernel_loader   # Made global to be seen at link-time
 
 
@@ -30,7 +30,7 @@ kernel_loader:
     push eax
     push ebx
     cli             # Disable interrupts
-    call x86_boot 
+    call x86_boot_legacy 
 
 _exit_loop:
     call exit_panic

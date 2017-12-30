@@ -1,24 +1,18 @@
+#include <platform.h>
 #include <kernel/kernel.h>
 #include <kernel/printk.h>
 #include <kernel/tty.h>
 
-#include <stdlib.h>
 #include <multiboot/multiboot.h>
 #include <arch/descriptor.h>
-#include <arch/io.h>
 #include <arch/irq.h>
 
 
-//FIXME: Figure out a decent method for computing delays
-void udelay(unsigned long usecs){
-    for(; usecs != 0; usecs--){
-        if(inb(0x80) || 1)
-            continue;
-    }
-}
+/* Instance of the global platform structure */
+struct platform plat = {0}; 
 
 
-void x86_boot(struct multiboot_info* mbi, uint32_t magic)
+void x86_boot_legacy(struct multiboot_info* mbi, uint32_t magic)
 {
     early_console_init();
 
@@ -26,13 +20,14 @@ void x86_boot(struct multiboot_info* mbi, uint32_t magic)
         printk("The Multiboot header failed validation!\n");
         abort();
     }
-    
-    /* Configure PIC or APIC; disable interrupts */
-    int_init();
 
-    /* Install early default GDT and IDT */
+    /* Install the default GDT and IDT */
     gdt_setup();
     idt_setup();
+    
+    /* Initialize the interrupt subsystem; returns with interrupts disabled */
+    irq_init();
 
+    /* Jump to the kernel proper's main entry point */
     kernel_main();
 }
