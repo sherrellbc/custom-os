@@ -9,36 +9,38 @@
  * @param base  : The base of the passed intger
  * @return      : A pointer to a local static buffer containing the converted result
  */
+//TODO: Pass in external buffer for use, or NULL to use internal
 char *itoa(int num, int base) 
 {
     static char buf[NUM_DIGITS] = {0};
-    unsigned int digit;
-    unsigned int number = (unsigned int) num;
-    int neg_flag = 0;
-    char *dst = buf + sizeof(buf)-1;  /* Start at the end */
-
-    memset(buf,'Z',32);
-    buf[31] = '\0';
-
+    unsigned int _num; 
+    int digit, negative = 0;
+    char *dst = buf + sizeof(buf) - 1;  /* Start at the end */
+    
     /* Special case for base 10 if the passed integer is negative */
     if( (num < 0) && (10 == base) ){
-        neg_flag = 1;
+        negative = 1;
         num *= -1;
     }
-    
+        
+    _num  = (unsigned int) num;
+
     /* While we haven't converted all digits and still have room for nul-term */
     do{
-        digit = number % base;
-        if (digit < 0xA)
+        digit = _num % base;
+
+        if(digit < 0xA){
             *--dst = '0' + digit;
-        else
-            *--dst = 'A' + digit - 0xA;
-        number /= base;
-    }while(number != 0);
+        }else{
+            *--dst = 'a' + digit - 0xA;
+        }
+        _num /= base;
+    }while(_num != 0);
 
     /* We worked backwards, so the negative case should be the last thing we check for */
-    if(1 == neg_flag)
+    if(negative){
         *--dst = '-';
+    }
 
     return dst;
 }
@@ -67,7 +69,7 @@ char *ltoa(long long num, int base)
     /* While we haven't converted all digits and still have room for nul-term */
     do{
         digit = number % base;
-        if (digit < 0xA)
+        if(digit < 0xA)
             *--dst = '0' + digit;
         else
             *--dst = 'A' + digit - 0xA;

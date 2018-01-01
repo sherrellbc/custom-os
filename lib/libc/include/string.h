@@ -5,6 +5,7 @@
 
 
 int strncmp(const char *s1, const char *s2, size_t n);
+char *strncpy(char * restrict dst, char * restrict src, size_t len);
 int memcmp(const void*, const void*, size_t);
 void* memcpy(void* __restrict, const void* __restrict, size_t);
 void* memmove(void*, const void*, size_t);

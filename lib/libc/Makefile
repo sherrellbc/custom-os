@@ -5,6 +5,7 @@ LIBC_BUILD_INCLUDE_INSTALL_DIR=/usr/include
 # Define build objects, include architecture-specific ones
 LIBC_OBJS =\
     $(LIBC_LOCALDIR)/string/strncmp.o \
+    $(LIBC_LOCALDIR)/string/strncpy.o \
     $(LIBC_LOCALDIR)/string/strlen.o \
     $(LIBC_LOCALDIR)/string/memcmp.o \
     $(LIBC_LOCALDIR)/string/memcpy.o \

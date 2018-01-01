@@ -63,6 +63,9 @@ char console_putc(char c)
 {
     /* Special case characters */
     switch(c){
+    case '\t':
+        console_puts("   ");
+        return c;
     case '\n':
         if( ++g_vga.row == g_vga.height )
             g_vga.row = 0;

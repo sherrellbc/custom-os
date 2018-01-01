@@ -9,7 +9,7 @@
 char putchar(char);
 //int puts(const char*);
 int snprintf(char *buffer, size_t size, const char *fmt, ...);
-int vsnprintf(const char* fmt, size_t size, char* buffer, va_list arg);
+int vsnprintf(char *buf, size_t len, const char *format, va_list va);
 
 
 #endif /* _STDIO_H */
