@@ -1,7 +1,4 @@
-#include <platform.h>
-#include <kernel/kernel.h>
-#include <kernel/printk.h>
-#include <kernel/tty.h>
+#include <mock.h>
 
 #include <multiboot/multiboot.h>
 #include <arch/descriptor.h>

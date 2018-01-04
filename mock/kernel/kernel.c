@@ -1,6 +1,4 @@
-#include <kernel/kernel.h>
-#include <kernel/printk.h>
-#include <platform.h>
+#include <mock.h>
 #include <irq.h>
 
 extern uint64_t time_get_systick(void);
@@ -14,7 +12,7 @@ void kernel_main(void)
     plat.irq_global_enable();
 
     while(1){
-        printk("systick: 0x%x\n", time_get_systick());
+        printk("\rsystick: 0x%x", time_get_systick());
         time_delay_msec(1000);
     }
 }
