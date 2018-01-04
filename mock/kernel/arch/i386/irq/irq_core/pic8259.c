@@ -47,7 +47,7 @@ uint16_t pic8259_get_register(int reg)
 {
     pic_outb(PIC8259_MASTER_CMD, reg);
     pic_outb(PIC8259_SLAVE_CMD, reg);
-    return (pic_inb(PIC8259_SLAVE_DATA) << 8) | pic_inb(PIC8259_MASTER_DATA);
+    return (pic_inb(PIC8259_SLAVE_CMD) << 8) | pic_inb(PIC8259_MASTER_CMD);
 }
 
 

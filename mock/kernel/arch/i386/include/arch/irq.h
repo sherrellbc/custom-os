@@ -18,19 +18,19 @@ enum irq_hw {
 /*
  * Early interrupt initialization 
  */
-void irq_init(void);
+//void irq_init(void);
 
 
 /*
  * Platform global interrupt enable
  */
-void arch_global_irq_enable(void);
+//void arch_global_irq_enable(void);
 
 
 /*
  * Platform global interrupt disable
  */
-void arch_global_irq_disable(void);
+//void arch_global_irq_disable(void);
 
 
 #endif /* _ARCH_X86_IRQ_H */
