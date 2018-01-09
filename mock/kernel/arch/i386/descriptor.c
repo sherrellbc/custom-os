@@ -97,7 +97,7 @@ void idt_setup(void)
 {
     /* Construct the initial IDT with entries all pointing to the default handler */
     for(int i=0; i<(int) (sizeof(g_pm_tables.idt)/sizeof(struct gate_desc)); i++){
-        g_pm_tables.idt[i] = LDT_DESCRIPTOR_ENTRY( (uint32_t) default_handler, SELECTOR(0,0,1), 0x8e);
+        g_pm_tables.idt[i] = LDT_DESCRIPTOR_ENTRY( (uint32_t) g_int_default_vect[i], SELECTOR(0,0,1), 0x8e);
     }
 
     g_pm_tables.idt_ptr = (struct desc_table_ptr) {
@@ -105,7 +105,6 @@ void idt_setup(void)
        .ptr = (uint32_t) &g_pm_tables.idt
     };
      
-    printk("Loading IDT\n");
     load_idt(&g_pm_tables.idt_ptr);
 }
 
@@ -114,6 +113,7 @@ int idt_set_slot(int slot, struct gate_desc *entry)
 {
     if( (NULL != entry) && ((unsigned)slot < sizeof(g_pm_tables.idt)/sizeof(struct gate_desc)) ){
         memcpy(&g_pm_tables.idt[slot], entry, sizeof(struct gate_desc));
+//        printk("SET IDT[%d] = 0x%x\n", slot, (entry->handler_addr1 << 16) | entry->handler_addr0);
     }
 
     return 0;

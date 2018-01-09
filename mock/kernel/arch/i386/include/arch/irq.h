@@ -1,6 +1,7 @@
 #ifndef _ARCH_X86_IRQ_H
 #define _ARCH_X86_IRQ_H
 
+#include <stdint.h>
 #include "irq/time.h"
 #include "irq/cmos.h"
 #include "irq/keyboard.h"
@@ -8,6 +9,9 @@
 
 /* The default system handler, used to detect programming/configuration issues */
 void default_handler(void);
+
+/* The default interrupt handler vector */
+uint32_t *g_int_default_vect;
 
 
 enum irq_hw {

@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <irq.h>
 #include <arch/io.h>
+#include <mock.h>
 
 
 /* Location of Command and data ports for the Master/Slave PIC */
@@ -13,10 +14,6 @@
 #define PIC8259_SLAVE_CMD       0xa0
 #define PIC8259_SLAVE_DATA      0xa1
 
-#define PIC8259_CMD_FLUSH_ISR   0x20
-#define PIC8259_REG_IRR         0x0a
-#define PIC8259_REG_ISR         0x0b
-
 
 /* 
  * Apparently reading and writing to the PIC without regulation can introduce 
@@ -24,7 +21,7 @@
  * run into such a problem 
  */
 static inline uint8_t pic_inb(unsigned int port)
-{
+{   
     uint8_t value = inb(port);
     //need io delay to PIC
     return value;
@@ -45,6 +42,9 @@ void pic8259_setmask(irq_t mask);
 uint16_t pic8259_getmask(void);
 void pic8259_flush(void);
 void pic8259_eoi(void);
+
+uint16_t pic8259_get_irr(void);
+uint16_t pic8259_get_isr(void);
 
 
 #endif /* _PIC8259_H */
