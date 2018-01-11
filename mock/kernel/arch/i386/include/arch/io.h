@@ -4,7 +4,7 @@
 
 
 #define CREATE_IO_FUNC_TYPE(bwl, bw, type)                  \
-static inline void out##bwl(unsigned type value, int port)  \
+static inline void out##bwl(int port, unsigned type value)  \
 {                                                           \
     asm volatile("out" #bwl " %" #bw "0, %w1"               \
              : : "a"(value), "Nd"(port));                   \

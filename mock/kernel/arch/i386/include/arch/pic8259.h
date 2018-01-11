@@ -28,9 +28,9 @@ static inline uint8_t pic_inb(unsigned int port)
 }
 
 
-static inline void pic_outb(uint8_t value, unsigned int port)
+static inline void pic_outb(uint8_t port, unsigned int value)
 {
-    outb(value, port);
+    outb(port, value);
     //need io delay to PIC
 }
 

@@ -47,11 +47,11 @@ default_handler_common:
     lea eax, unhandled_int_string
     push eax
     call printk
-
     pop eax
     pop eax
 
     call pic8259_eoi
+
     popad
 
 do_halt:

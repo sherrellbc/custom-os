@@ -49,8 +49,8 @@ void irq_init(void)
     plat.irq_setmask(0xffff);
 
     //FIXME: Remove this from this file
-//    struct gate_desc kb = LDT_DESCRIPTOR_ENTRY((uint32_t) kb_handler_entry, SELECTOR(0,0,1), 0x8e);
-//    struct gate_desc time = LDT_DESCRIPTOR_ENTRY((uint32_t) time_systick_handler, SELECTOR(0,0,1), 0x8e);
-//    idt_set_slot(8, &time); 
-//    idt_set_slot(9, &kb); 
+    struct gate_desc kb = LDT_DESCRIPTOR_ENTRY((uint32_t) kb_handler_entry, SELECTOR(0,0,1), 0x8e);
+    struct gate_desc time = LDT_DESCRIPTOR_ENTRY((uint32_t) time_systick_handler, SELECTOR(0,0,1), 0x8e);
+    idt_set_slot(32, &time); 
+    idt_set_slot(33, &kb); 
 }

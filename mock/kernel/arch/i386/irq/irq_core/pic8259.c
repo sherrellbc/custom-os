@@ -98,12 +98,20 @@
 /*
  * Definitions for the OCW words relevent to the x86 implementation
  */
+#define OCW2_NON_SPECIFIC_EOI   (1 << 5)
 #define OCW3_READ_REGISTER      (1 << 1)
 #define OCW3_IN_SERVICE_REG     (1 << 0)
 #define OCW3_INT_REQUEST_REG    (0 << 0)
 #define PIC8259_REG_IRR         (0x08 | OCW3_READ_REGISTER | OCW3_INT_REQUEST_REG)
 #define PIC8259_REG_ISR         (0x08 | OCW3_READ_REGISTER | OCW3_IN_SERVICE_REG)
 
+/*
+ * There is no real process for deciding where to remap the pic. We just need
+ * to ensure the remap does not overlap protected mode interrupts (e.g. 0-31). 
+ * As such, we can define the default remapping here for simplicity
+ */
+#define PIC8259_MASTER_REMAP_BASE   (0x20)
+#define PIC8259_SLAVE_REMAP_BASE    (PIC8259_MASTER_REMAP_BASE + 8)
 
 /* 
  * Local data structure used to keep track of the current PIC configuration 
@@ -140,8 +148,17 @@ static void pic8259_remap(uint8_t moffset, uint8_t soffset)
     pic_outb(PIC8259_SLAVE_DATA,  ICW4_uPM_8086);
 
     /* Update our local configuration. Recall only b7-b3 are used when rebasing the 8259 */
+    assertk( 0 == ((moffset & 0x7) | (soffset & 0x7)) );
     g_pic8259_conf.master_voffset = moffset & 0xf8;
     g_pic8259_conf.slave_voffset =  soffset & 0xf8;
+}
+
+
+static uint16_t pic8259_get_register(int reg)
+{
+    pic_outb(PIC8259_MASTER_CMD, 0x08 | OCW3_READ_REGISTER | reg);
+    pic_outb(PIC8259_SLAVE_CMD,  0x08 | OCW3_READ_REGISTER | reg);
+    return (pic_inb(PIC8259_SLAVE_CMD) << 8) | pic_inb(PIC8259_MASTER_CMD);
 }
 
 
@@ -166,37 +183,13 @@ void pic8259_mask_irq(irq_t irq)
 void pic8259_unmask_irq(irq_t irq)
 {
     pic8259_setmask(pic8259_getmask() & ~(1 << irq));    
-    pic8259_flush();    //XXX: Is this necessary?
 }
 
 
 void pic8259_setmask(irq_t mask)
 {
-    pic_outb(mask & 0xff, PIC8259_MASTER_DATA);
-    pic_outb(mask >> 8, PIC8259_SLAVE_DATA);
-}
-
-
-void pic8259_flush(void)
-{    
-//    pic_outb(PIC8259_MASTER_CMD, PIC8259_CMD_FLUSH_ISR);
-//    pic_outb(PIC8259_SLAVE_CMD, PIC8259_CMD_FLUSH_ISR);
-}
-
-
-void pic8259_eoi(void)
-{
-    //FIXME: send to correct pic
-    pic_outb(PIC8259_MASTER_CMD, 0x20);
-    pic_outb(PIC8259_SLAVE_CMD, 0x20);
-}
-
-
-uint16_t pic8259_get_register(int reg)
-{
-    pic_outb(PIC8259_MASTER_CMD, 0x08 | OCW3_READ_REGISTER | reg);
-    pic_outb(PIC8259_SLAVE_CMD,  0x08 | OCW3_READ_REGISTER | reg);
-    return (pic_inb(PIC8259_SLAVE_CMD) << 8) | pic_inb(PIC8259_MASTER_CMD);
+    pic_outb(PIC8259_MASTER_DATA, mask & 0xff);
+    pic_outb(PIC8259_SLAVE_DATA, mask >> 8);
 }
 
 
@@ -212,9 +205,30 @@ uint16_t pic8259_get_isr(void)
 }
 
 
+void pic8259_eoi(void)
+{
+    uint16_t isr,irr;
+    
+    isr = pic8259_get_isr();
+    irr = pic8259_get_irr();
+    (void)irr;
+
+    /* Send the slave an EOI if it was the source of the interrupt */
+    if(isr & 0xff00){
+        pic_outb(PIC8259_SLAVE_CMD, OCW2_NON_SPECIFIC_EOI);
+    }
+
+    /*
+     * Either the master was the source of the interrupt or it was
+     * a proxy for the slave. Either way we need to send an EOI
+     */
+    pic_outb(PIC8259_MASTER_CMD, OCW2_NON_SPECIFIC_EOI);
+}
+
+
 void pic8259_init(void)
 {
     pic8259_disable();
-    pic8259_remap(0x20, 0x28);
+    pic8259_remap(PIC8259_MASTER_REMAP_BASE, PIC8259_SLAVE_REMAP_BASE);
 }
 
