@@ -2,7 +2,6 @@
 #define _ASM_X86_SEGMENT_H
 
 #include <stdint.h>
-#include <kernel/kernel.h>
 
 // Each define here is for a specific flag in the descriptor.
 // Refer to the intel documentation for a description of what each one does.
@@ -129,16 +128,12 @@ struct gate_desc {
 
 #define LDT_DESCRIPTOR_ENTRY(_handler, _selector, _type) \
     (struct gate_desc) { \
-        .handler_addr0 = (uint16_t) ((_handler) & 0xffff), \
+        .handler_addr0 = (uint16_t) (((uint32_t)_handler) & 0xffff), \
         .selector = (_selector), \
         .mbz = 0, \
         .type_attr = _type, \
-        .handler_addr1 = (uint16_t) (((_handler) & 0xffff0000) >> 16), \
+        .handler_addr1 = (uint16_t) ((((uint32_t)_handler) & 0xffff0000) >> 16), \
     } \
-
-//        .p = 1,
-//        .dpl = 3,
-//        .s = 0,
 
 
 /*

@@ -1,5 +1,5 @@
-#include <kernel/kernel.h>
-#include <kernel/printk.h>
+#include <mock.h>
+
 
 volatile uint32_t g_systick = 0;
 

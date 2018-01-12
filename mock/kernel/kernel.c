@@ -1,6 +1,4 @@
-#include <kernel/kernel.h>
 #include <mock.h>
-#include <platform.h>
 #include <irq.h>
 
 extern uint32_t time_get_systick(void);
