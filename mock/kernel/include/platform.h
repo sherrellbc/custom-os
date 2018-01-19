@@ -15,7 +15,8 @@ struct platform {
     void (*irq_setmask)(irq_t mask);
 
     kern_return_t (*irq_insert)(irq_handler_t handler, irq_t slot);
-    kern_return_t (*irq_remove)(irq_t slot);
+    kern_return_t (*irq_remove)(irq_handler_t *handler, irq_t slot);
+    irq_handler_t (*irq_get)(irq_t slot);
 
     /* Time */
 };

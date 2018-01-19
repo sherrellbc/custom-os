@@ -66,12 +66,12 @@
  * - When a command is issued with A0=0 and D4=1, the contents are interpreted as
  *   ICW1. Once the initialization sequence is started, the following occurs:
  *
- *      a) Edge-sense is reset to trigger on low->high transitions
- *      b) IMR is cleared
- *      c) IR7 is given priority 7
- *      d) The slave mode address is set to 7
- *      e) Special Mask Mode is cleared and Status Read is set to IRR
- *      f) If IC4=0, then all functions selected in ICW4 are set to zero
+ *      1) Edge-sense is reset to trigger on low->high transitions
+ *      2) IMR is cleared
+ *      3) IR7 is given priority 7
+ *      4) The slave mode address is set to 7
+ *      5) Special Mask Mode is cleared and Status Read is set to IRR
+ *      6) If IC4=0, then all functions selected in ICW4 are set to zero
  *
  * Operation Command Words (OCW)
  */
@@ -117,6 +117,7 @@
  * Local data structure used to keep track of the current PIC configuration 
  */
 struct pic8259_conf {
+    uint8_t active;
     uint8_t master_voffset; 
     uint8_t slave_voffset;
 } g_pic8259_conf = {0};
@@ -165,6 +166,7 @@ static uint16_t pic8259_get_register(int reg)
 void pic8259_disable(void)
 {
     pic8259_setmask(0xffff);
+    g_pic8259_conf.active = 0;
 }
 
 
@@ -182,7 +184,7 @@ void pic8259_mask_irq(irq_t irq)
 
 void pic8259_unmask_irq(irq_t irq)
 {
-    pic8259_setmask(pic8259_getmask() & ~(1 << irq));    
+    pic8259_setmask(pic8259_getmask() & ~(1 << irq));
 }
 
 
@@ -207,14 +209,8 @@ uint16_t pic8259_get_isr(void)
 
 void pic8259_eoi(void)
 {
-    uint16_t isr,irr;
-    
-    isr = pic8259_get_isr();
-    irr = pic8259_get_irr();
-    (void)irr;
-
     /* Send the slave an EOI if it was the source of the interrupt */
-    if(isr & 0xff00){
+    if(pic8259_get_isr() & 0xff00){
         pic_outb(PIC8259_SLAVE_CMD, OCW2_NON_SPECIFIC_EOI);
     }
 
@@ -226,9 +222,16 @@ void pic8259_eoi(void)
 }
 
 
+int pic8259_is_active(void)
+{
+    return (1 == g_pic8259_conf.active);
+}
+
+
 void pic8259_init(void)
 {
-    pic8259_disable();
+    pic8259_setmask(0xffff);
     pic8259_remap(PIC8259_MASTER_REMAP_BASE, PIC8259_SLAVE_REMAP_BASE);
+    g_pic8259_conf.active = 1;
 }
 

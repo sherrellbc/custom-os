@@ -38,13 +38,16 @@ void kernel_main(void);
 //void exit_panic(void);
 
 
-//XXX: This should be in a "debug" area of the headers, and defined only if a debug build
+//XXX: These should be in a "debug" area of the headers, and defined only if a debug build
 #define assertk(expr) ({                                                    \
             if(0 == (expr)){                                                \
                 printk("Assert failed: %s:%d\n", __FUNCTION__, __LINE__);   \
                 while(1);                                                   \
             }                                                               \
         })                                                                  \
+
+#define MIN(a,b)    (((a) < (b)) ? (a) : (b))
+#define MAX(a,b)    (((a) < (b)) ? (b) : (a))
 
 
 //void kpanic(const char *str, int num);

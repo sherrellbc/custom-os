@@ -22,6 +22,8 @@ KERNEL_IRQ_OBJS=\
     $(ARCH_DIR)/irq/keyboard/keyboard_asm.o \
     $(ARCH_DIR)/irq/time/time.o \
     $(ARCH_DIR)/irq/time/time_asm.o \
+    $(ARCH_DIR)/irq/cmos/cmos.o \
+    $(ARCH_DIR)/irq/cmos/cmos_asm.o \
 
 KERNEL_MISC_OBJS=\
     $(ARCH_DIR)/tty.o \

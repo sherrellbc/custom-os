@@ -29,7 +29,6 @@
 .endm
 
 
-
 .section .data
 unhandled_int_string: 
     .asciz "\n\n*** Unhandled interrupt [%d] ***\n"

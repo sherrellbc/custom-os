@@ -5,6 +5,7 @@
 #include "irq/time.h"
 #include "irq/cmos.h"
 #include "irq/keyboard.h"
+#include <irq.h>
 
 
 /* 
