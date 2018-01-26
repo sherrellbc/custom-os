@@ -3,6 +3,7 @@
 #include <arch/io.h>
 
 //TODO: Disable NMI while programming the RTC
+//TODO: Use of the RTC timers/alarm interrupts
 
 /*
  * Theory
@@ -53,9 +54,10 @@
 #define CMOS_IO_CMD         (0x70)
 #define CMOS_IO_DATA        (0x71)
 
-#define BCD_TO_BINARY(bcd)  (10*((bcd & 0xf0) >> 4) + (bcd & 0x0f))
+#define BCD_TO_BINARY(bcd)  (10*(((bcd) & 0xf0) >> 4) + ((bcd) & 0x0f))
+#define BINARY_TO_BCD(bin)  ((((bin)/10) << 4) | ((bin) % 10))
 
-#define IS_RTC_REGISTER(reg)     (reg <= RTC_YEAR)
+#define IS_RTC_REGISTER(reg)     ((reg) <= RTC_YEAR)
 
 /*
  * The CMOS landscape has use that wildly varies and remains, to this day,
@@ -105,7 +107,7 @@ enum status_reg_masks {
  * An asynchronously-updated globally accessible variable for storing
  * the latest time read from the CMOS/RTC
  */
-struct cmos_rtc_time g_latest_time = {0};
+struct cmos_rtc_time g_time_hw = {0};
 
 
 /* 
@@ -113,9 +115,6 @@ struct cmos_rtc_time g_latest_time = {0};
  * Tracking this data prevents needless slow access to CMOS registers
  */
 struct cmos_conf { 
-    /* Flag indicating an asynchronous update to cmos time was performed */
-    int async_update; 
-
     /* Flag indicating the state of the CMOS "time updated" interrupt */
     int int_status;
 }g_cmos_conf;
@@ -135,6 +134,9 @@ struct rtc_conf {
     uint8_t time_data_mode;
     uint8_t time_hour_format;
     uint8_t daylight_savings;
+
+    /* Flag indicating an asynchronous update to cmos time was performed */
+    int async_update; 
 } g_rtc_conf;
 
 
@@ -213,7 +215,7 @@ void cmos_write_register(int reg, uint8_t data)
 
         outb(CMOS_IO_CMD, reg);
         outb(CMOS_IO_DATA, data);
-        g_cmos_conf.async_update = 1;
+        g_rtc_conf.async_update = 1;
 
         cmos_interrupt_set(cmos_int_orig);
         return;
@@ -232,7 +234,7 @@ int cmos_read_block(uint8_t *buf, size_t len, size_t offset)
         buf[i] = cmos_read_register(i);
     }
     
-    g_cmos_conf.async_update = 1;
+    g_rtc_conf.async_update = 1;
     cmos_interrupt_set(cmos_int_orig);
     return MIN(len, CMOS_MEMORY_SIZE - offset);
 }
@@ -246,49 +248,76 @@ int cmos_write_block(uint8_t *buf, size_t len, size_t offset)
         cmos_write_register(i, buf[i]);
     }
 
-    g_cmos_conf.async_update = 1;
+    g_rtc_conf.async_update = 1;
     cmos_interrupt_set(cmos_int_orig);
     return MIN(len, CMOS_MEMORY_SIZE - offset);
 }
 
 
-void cmos_set_time(struct cmos_rtc_time *rtc)
+void cmos_set_time(struct cmos_rtc_time *time)
 {
     int cmos_int_orig;
+    struct cmos_rtc_time *tmp_time = time;
+    struct cmos_rtc_time adjusted;
 
-    if(NULL != rtc){
+    if(NULL != time){
+        /* 
+         * We need to preprocess the received time if the 
+         * hardware's state is configured to require BCD formatted
+         * time data
+         */
+        if(RTC_TIME_FORMAT_BCD & g_rtc_conf.time_data_mode){
+            
+            adjusted.seconds =  BINARY_TO_BCD(time->seconds);
+            adjusted.minutes =  BINARY_TO_BCD(time->minutes); 
+            adjusted.hours =    BINARY_TO_BCD(time->hours);
+            adjusted.day =      BINARY_TO_BCD(time->day);
+            adjusted.weekday =  BINARY_TO_BCD(time->weekday);
+            adjusted.month =    BINARY_TO_BCD(time->month);
+            adjusted.year =     BINARY_TO_BCD(time->year);
+
+            tmp_time = &adjusted;
+        }
+
         cmos_int_orig = cmos_interrupt_set(0);
 
-        cmos_write_register(RTC_SECOND, rtc->seconds);
-        cmos_write_register(RTC_MINUTE, rtc->minutes);
-        cmos_write_register(RTC_HOUR, rtc->hours);
-        cmos_write_register(RTC_WEEKDAY, rtc->weekday);
-        cmos_write_register(RTC_DAY, rtc->day);
-        cmos_write_register(RTC_MONTH, rtc->month);
-        cmos_write_register(RTC_YEAR, rtc->year);
+        /* 
+         * Write in reverse order to prevent any race conditions 
+         * with the 'seconds' updating 
+         */
+        cmos_write_register(RTC_YEAR, tmp_time->year);
+        cmos_write_register(RTC_MONTH, tmp_time->month);
+        cmos_write_register(RTC_DAY, tmp_time->day);
+        cmos_write_register(RTC_WEEKDAY, tmp_time->weekday);
+        cmos_write_register(RTC_HOUR, tmp_time->hours);
+        cmos_write_register(RTC_MINUTE, tmp_time->minutes);
+        cmos_write_register(RTC_SECOND, tmp_time->seconds);
 
         cmos_interrupt_set(cmos_int_orig);
     } 
 }
 
 
-void cmos_get_time(struct cmos_rtc_time *rtc)
+void cmos_get_time(struct cmos_rtc_time *time)
 {
     int cmos_int_orig;
 
-    if(NULL != rtc){
+    if(NULL != time){
         cmos_int_orig = cmos_interrupt_set(0);
-
-        rtc->seconds =  cmos_read_register(RTC_SECOND);
-        rtc->minutes =  cmos_read_register(RTC_MINUTE);
-        rtc->hours =    cmos_read_register(RTC_HOUR);
-        rtc->weekday =  cmos_read_register(RTC_WEEKDAY);
-        rtc->day =      cmos_read_register(RTC_DAY);
-        rtc->month =    cmos_read_register(RTC_MONTH);
-        rtc->year =    cmos_read_register(RTC_YEAR);
-
+        memcpy(time, &g_time_hw, sizeof(struct cmos_rtc_time));
         cmos_interrupt_set(cmos_int_orig);
-    } 
+
+        /* Now that we've collected the data, check if we need to compute conversions */
+        if(RTC_TIME_FORMAT_BCD & g_rtc_conf.time_data_mode){
+            time->seconds =  BCD_TO_BINARY(time->seconds);
+            time->minutes =  BCD_TO_BINARY(time->minutes); 
+            time->hours =    BCD_TO_BINARY(time->hours);
+            time->day =      BCD_TO_BINARY(time->day);
+            time->weekday =  BCD_TO_BINARY(time->weekday);
+            time->month =    BCD_TO_BINARY(time->month);
+            time->year =     BCD_TO_BINARY(time->year);
+        }
+    }
 }
 
 
@@ -312,19 +341,30 @@ static void cmos_init_conf(void)
 }
 
 
+static void cmos_sync_hw_time(void)
+{
+    g_time_hw.seconds = cmos_read_register(RTC_SECOND);
+    g_time_hw.minutes = cmos_read_register(RTC_MINUTE);
+    g_time_hw.hours =   cmos_read_register(RTC_HOUR);
+    g_time_hw.weekday = cmos_read_register(RTC_WEEKDAY);
+    g_time_hw.day =     cmos_read_register(RTC_DAY);
+    g_time_hw.month =   cmos_read_register(RTC_MONTH);
+    g_time_hw.year =    cmos_read_register(RTC_YEAR);
+}
+
+
+
 //TODO: Configurable initialization
 void cmos_init(void)
 {
     /* Initialize the global CMOS/RTC configuration cache */
     cmos_init_conf();
 
-    /* Initial conditions to ensure the handler updates these on the first execution */
-    g_latest_time.seconds = 0xff;
-    g_latest_time.minutes = 0xff;
-    g_latest_time.hours =   0xff;
-    g_latest_time.day =     0xff;
-    g_latest_time.month =   0xff;
-    g_latest_time.year =    0xff;
+    /* 
+     * Initial conditions to ensure the handler updates these on 
+     * the first execution. Note that we are updating the 
+     */
+    memset(&g_time_hw, 0xff, sizeof(struct cmos_rtc_time));
 
     /* 
      * Unmask the CMOS' "time updated" interrupt; it can be gated through the 
@@ -332,18 +372,6 @@ void cmos_init(void)
      */
     //TODO: install handler if interrupts requested on
     cmos_interrupt_enable();
-}
-
-
-static void cmos_update_all(void)
-{
-    g_latest_time.seconds = cmos_read_register(RTC_SECOND);
-    g_latest_time.minutes = cmos_read_register(RTC_MINUTE);
-    g_latest_time.hours =   cmos_read_register(RTC_HOUR);
-    g_latest_time.weekday = cmos_read_register(RTC_WEEKDAY);
-    g_latest_time.day =     cmos_read_register(RTC_DAY);
-    g_latest_time.month =   cmos_read_register(RTC_MONTH);
-    g_latest_time.year =    cmos_read_register(RTC_YEAR);
 }
 
 
@@ -360,41 +388,42 @@ static void cmos_interrupt_clear(void)
 
 void cmos_update_handler(void)
 {
-#if 0
-    uint8_t seconds, minutes, hours, day, month;
+    struct cmos_rtc_time htime;
 
     /* 
      * Efficiently update the cmos time unless the RTC was 
      * asynchronously manually updated 
      */
-    //XXX: Data formats
-    if(0 == g_cmos_conf.async_update){
-        seconds = cmos_read_register(RTC_SECOND);
+    if(0 == g_rtc_conf.async_update){
+        htime.seconds = cmos_read_register(RTC_SECOND);
 
         /* Seconds overflowed, update minutes */
-        if(seconds < g_latest_time.seconds){
-            g_latest_time.seconds = seconds;
-            minutes = cmos_read_register(RTC_MINUTE);
+        if(htime.seconds < g_time_hw.seconds){
+            g_time_hw.seconds = htime.seconds;
+            htime.minutes = cmos_read_register(RTC_MINUTE);
             
             /* Minutes overflowed, update hours */
-            if(minutes < g_latest_time.minutes){
-                g_latest_time.minutes = minutes;
-                hours = cmos_read_register(RTC_HOUR);                
+            if(htime.minutes < g_time_hw.minutes){
+                g_time_hw.minutes = htime.minutes;
+                htime.hours = cmos_read_register(RTC_HOUR);                
 
                 /* Hours overflowed, update days */
-                if(hours < g_latest_time.hours){
-                    g_latest_time.hours = hours;
-                    day = cmos_read_register(RTC_DAY);
+                if(htime.hours < g_time_hw.hours){
+                    g_time_hw.hours = htime.hours;
+                    htime.day = cmos_read_register(RTC_DAY);
 
                     /* Day overflowed, update month */
-                    if(day < g_latest_time.day){
-                        g_latest_time.day = day;
-                        month = cmos_read_register(RTC_MONTH);
+                    if(htime.day < g_time_hw.day){
+                        g_time_hw.day = htime.day;
+                        htime.month = cmos_read_register(RTC_MONTH);
+
+                        /* If the day rolled over, also update the weekday */
+                        g_time_hw.weekday = cmos_read_register(RTC_WEEKDAY);
 
                         /* Month overflowed, update year */
-                        if(month < g_latest_time.month){
-                            g_latest_time.month = month;
-                            g_latest_time.year = cmos_read_register(RTC_YEAR);
+                        if(htime.month < g_time_hw.month){
+                            g_time_hw.month = htime.month;
+                            g_time_hw.year = cmos_read_register(RTC_YEAR);
                         }
 
                     }
@@ -402,30 +431,13 @@ void cmos_update_handler(void)
 
             }
         }else{
-            g_latest_time.seconds = seconds;
+            g_time_hw.seconds = htime.seconds;
         }
     }else{
         printk("Async update!\n");           
-        cmos_update_all();
-        g_cmos_conf.async_update = 0;
+        cmos_sync_hw_time(); 
+        g_rtc_conf.async_update = 0;
     }
-#endif
-
-    cmos_update_all();
-
-    /* Now that we've collected the data, check if we need to compute conversions */
-    switch(g_rtc_conf.time_data_mode){
-        case RTC_TIME_FORMAT_BCD:
-            g_latest_time.seconds = BCD_TO_BINARY(g_latest_time.seconds);
-            g_latest_time.minutes = BCD_TO_BINARY(g_latest_time.minutes); 
-            g_latest_time.hours =   BCD_TO_BINARY(g_latest_time.hours);
-            break;
-
-        case RTC_TIME_FORMAT_BINARY:
-        default:
-            break;
-    }
-
     cmos_interrupt_clear();
 }
 
@@ -433,8 +445,11 @@ void cmos_update_handler(void)
 //XXX: Delete me
 void cmos_test_removeme(void)
 {
-    printk("\rWeekday:%d Time %d:%d:%d Date: %d/%d/%d             ",
-            g_latest_time.weekday, 
-            g_latest_time.hours, g_latest_time.minutes, g_latest_time.seconds,
-            g_latest_time.day, g_latest_time.month, g_latest_time.year);
+    struct cmos_rtc_time time;
+    cmos_get_time(&time);
+
+    printk("\rWeekday:%d Time %d:%d:%d Date: %d/%d/%d             \r",
+            time.weekday, 
+            time.hours, time.minutes, time.seconds,
+            time.month, time.day, time.year);
 }
