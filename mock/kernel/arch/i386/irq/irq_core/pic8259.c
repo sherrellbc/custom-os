@@ -195,6 +195,32 @@ void pic8259_setmask(irq_t mask)
 }
 
 
+int pic8259_irq_get(irq_t irq)
+{
+    return (0 == (pic8259_getmask() & (1 << irq)));
+}
+
+
+int pic8259_irq_set(irq_t irq, int state)
+{
+    uint16_t new_mask, mask = pic8259_getmask();
+
+    /* Compute the new mask */
+    if(0 == state){
+        new_mask = mask | (1 << irq);
+    }else{
+        new_mask = mask & ~(1 << irq);
+    }
+
+    /* Do not re-set the mask if the desired state is already met */
+    if(mask != new_mask){
+        pic8259_setmask(new_mask);
+    }
+
+    return (0 == (mask & (1 << irq)));
+}
+
+
 uint16_t pic8259_get_irr(void)
 {
     return pic8259_get_register(OCW3_INT_REQUEST_REG);
@@ -230,8 +256,9 @@ int pic8259_is_active(void)
 
 void pic8259_init(void)
 {
-    pic8259_setmask(0xffff);
+    /* Remapping the PIC will clear the mask register, so set it afterwards */
     pic8259_remap(PIC8259_MASTER_REMAP_BASE, PIC8259_SLAVE_REMAP_BASE);
+    pic8259_setmask(0xffff);
     g_pic8259_conf.active = 1;
 }
 

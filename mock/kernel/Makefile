@@ -46,6 +46,7 @@ include $(LIB_DIR)/Makefile
 kernel.elf: install-build-kern-headers libs $(KOBJS) $(ARCH_DIR)/linker.ld
 	@echo "\nBuilding $@"
 	$(CC) -T $(ARCH_DIR)/linker.ld -o $@ $(LDFLAGS) $(KOBJS) $(CFLAGS) $(LIBS)
+	objcopy --only-keep-debug $@ $@.sym
 
 install: sysroot
 sysroot: kernel.elf install-final-libs install-final-kernel install-final-bootloader sysroot-iso
@@ -79,9 +80,12 @@ GDB_DEBUG=
 ifneq ($(DEBUG),)
     GDB_DEBUG=-S -gdb tcp::10000
 endif
-run: sysroot-iso
+runq: sysroot-iso
 	qemu-system-i386 $(GDB_DEBUG) -boot d -cdrom mock.iso 
 #	qemu-system-i386 $(GDB_DEBUG) -d int,cpu_reset -boot d -cdrom mock.iso 
+
+runb: sysroot-iso
+	bochs -qf ../../tools/bochs.config -rc ../../tools/bochs.cmds
 
 .c.o:
 	$(CC) -MD -c $< -o $@ $(CFLAGS) $(CPPFLAGS)

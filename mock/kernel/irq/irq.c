@@ -13,7 +13,9 @@ void irq_disable(irq_t irq)
 }
 
 
+//TODO: TBD on how to do this with APIC ...
 void irq_setmask(irq_t mask)
 {
-    plat.irq_setmask(mask);
+    (void) mask;
+//    plat.irq_setmask(mask);
 }

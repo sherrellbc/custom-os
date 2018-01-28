@@ -41,7 +41,7 @@ g_int_default_vect:
 default_handler_common:
     pushad
 
-    /* Move past everything from pushad (8*4 bytes) */
+    /* FIXME (32-bit dependency) Move past everything from pushad (8*4 bytes) */
     push  [esp + 4*8] 
     lea eax, unhandled_int_string
     push eax
@@ -61,6 +61,7 @@ do_halt:
 
 /* Using the macro above, create 256 default interrupt entries */
 .section .data
+.align 8
 default_handlers:
 .set i, 0
 .rept 256

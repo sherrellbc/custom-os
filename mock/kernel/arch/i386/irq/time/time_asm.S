@@ -15,7 +15,7 @@ time_systick_handler:
     push eax
 
     lea ebx, g_systick
-    inc dword ptr [ebx]
+    inc dword ptr [ebx] //What if quad?
 
     call pic8259_eoi 
     pop eax

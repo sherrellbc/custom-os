@@ -35,11 +35,14 @@ static inline void pic_outb(uint8_t port, unsigned int value)
 }
 
 
+//FIXME: Move these into the source file once we migrate the plat init code
 void pic8259_init(void);
 void pic8259_mask_irq(irq_t irq);
 void pic8259_unmask_irq(irq_t irq);
 void pic8259_setmask(irq_t mask);
 uint16_t pic8259_getmask(void);
+int pic8259_irq_get(irq_t irq);
+int pic8259_irq_set(irq_t irq, int state);
 void pic8259_flush(void);
 void pic8259_eoi(void);
 

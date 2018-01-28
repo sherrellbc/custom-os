@@ -8,6 +8,10 @@ MULTIBOOT_OBJS :=\
 
 CLEAN_OBJS += $(MULTIBOOT_OBJS) $(MULTIBOOT_LOCALDIR)/libmultiboot.a
 
+
+$(MULTIBOOT_LOCALDIR)/multiboot.o : $(MULTIBOOT_LOCALDIR)/multiboot.c
+	$(CC) -MD -c $< -o $@ $(CFLAGS) -Wno-unused-variable $(CPPFLAGS) 
+
 install-multiboot-headers: 
 	mkdir -p $(BUILD)/$(MULTIBOOT_BUILD_INCLUDE_INSTALL_DIR)
 	cp -r $(MULTIBOOT_LOCALDIR)/include/* $(BUILD)/$(MULTIBOOT_BUILD_INCLUDE_INSTALL_DIR)
