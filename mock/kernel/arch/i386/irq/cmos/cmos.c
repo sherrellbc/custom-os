@@ -6,6 +6,8 @@
 //TODO: Use of the RTC timers/alarm interrupts
 //TODO: More configurable cmos init (interrupts, clock rate, etc)
 //TODO: Fix the information returned from cmos_int_* functions
+//TODO: Reimplement as "time since boot" and use time in nanoseconds
+//TODO: Start with higher-level "time" subsystem that initializes this
 
 /*
  * Theory
@@ -62,6 +64,10 @@
  * the latest time read from the CMOS/RTC
  */
 struct cmos_rtc_time g_time_hw = {0};
+
+
+/* A constant data structure used to compute date transitions relating to day and month rollovers */
+uint8_t const g_month_daycount[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
 
 /* 
@@ -222,16 +228,37 @@ void cmos_set_time(struct cmos_rtc_time *time)
         irq_orig = plat.irq_set(8, 0);
 
         /* 
-         * Write in reverse order to prevent any race conditions 
-         * with the 'seconds' updating 
+         * Doing IO can take a relatively long time, so we discriminate
+         * and only write to the CMOS if the data is different than our
+         * current in-memory cache that tracks the state of hardware
          */
-        cmos_reg_write(RTC_YEAR, tmp_time->year);
-        cmos_reg_write(RTC_MONTH, tmp_time->month);
-        cmos_reg_write(RTC_DAY, tmp_time->day);
-        cmos_reg_write(RTC_WEEKDAY, tmp_time->weekday);
-        cmos_reg_write(RTC_HOUR, tmp_time->hours);
-        cmos_reg_write(RTC_MINUTE, tmp_time->minutes);
-        cmos_reg_write(RTC_SECOND, tmp_time->seconds);
+        if(g_time_hw.seconds != tmp_time->seconds){
+            cmos_reg_write(RTC_SECOND, tmp_time->seconds);
+        }
+
+        if(g_time_hw.minutes != tmp_time->minutes){
+            cmos_reg_write(RTC_MINUTE, tmp_time->minutes);
+        }
+
+        if(g_time_hw.hours != tmp_time->hours){
+            cmos_reg_write(RTC_HOUR, tmp_time->hours);
+        }
+
+        if(g_time_hw.weekday != tmp_time->weekday){
+            cmos_reg_write(RTC_WEEKDAY, tmp_time->weekday);
+        }
+
+        if(g_time_hw.day != tmp_time->day){
+            cmos_reg_write(RTC_DAY, tmp_time->day);
+        }
+
+        if(g_time_hw.month != tmp_time->month){
+            cmos_reg_write(RTC_MONTH, tmp_time->month);
+        }
+
+        if(g_time_hw.year != tmp_time->year){
+            cmos_reg_write(RTC_YEAR, tmp_time->year);
+        }
 
         plat.irq_set(8, irq_orig);
     } 
@@ -298,11 +325,8 @@ void cmos_init(void)
     /* Initialize the global CMOS/RTC configuration cache */
     cmos_init_conf();
 
-    /* 
-     * Initial conditions to ensure the handler updates these on 
-     * the first execution. Note that we are updating the 
-     */
-    memset(&g_time_hw, 0xff, sizeof(struct cmos_rtc_time));
+    /* Initial system time sync with hardware time */
+    cmos_sync_hw_time();
 
     /* 
      * Unmask the CMOS' "time updated" interrupt; it can be gated through the 
@@ -312,57 +336,37 @@ void cmos_init(void)
 }
 
 
+/*
+ * Use this periodic interrupt to help keep track of system time without
+ * incurring the large time overhead of actually reading from hardware
+ */
 void cmos_update_hdlr(void)
 {
-    struct cmos_rtc_time htime;
+    g_time_hw.seconds = ((g_time_hw.seconds + 1) % 60);
 
-    /* 
-     * Efficiently update the cmos time unless the RTC was 
-     * asynchronously manually updated 
-     */
-    if(0 == g_rtc_conf.async_update){
-        htime.seconds = cmos_reg_read(RTC_SECOND);
+    /* Seconds overflowed, check minutes */
+    if(0 == g_time_hw.seconds){
+        g_time_hw.minutes = ((g_time_hw.minutes + 1) % 60);
 
-        /* Seconds overflowed, update minutes */
-        if(htime.seconds < g_time_hw.seconds){
-            g_time_hw.seconds = htime.seconds;
-            htime.minutes = cmos_reg_read(RTC_MINUTE);
-            
-            /* Minutes overflowed, update hours */
-            if(htime.minutes < g_time_hw.minutes){
-                g_time_hw.minutes = htime.minutes;
-                htime.hours = cmos_reg_read(RTC_HOUR);                
+        /* Minutes overflowed, check hours */
+        if(0 == g_time_hw.minutes){
+            g_time_hw.hours = ((g_time_hw.hours + 1) % 24);
 
-                /* Hours overflowed, update days */
-                if(htime.hours < g_time_hw.hours){
-                    g_time_hw.hours = htime.hours;
-                    htime.day = cmos_reg_read(RTC_DAY);
+            /* Hours overflowed, check days */
+            if(0 == g_time_hw.hours){
+                g_time_hw.day = ((g_time_hw.day + 1) % g_month_daycount[g_time_hw.day]);
+                g_time_hw.weekday = ((g_time_hw.weekday + 1) % 7);
 
-                    /* Day overflowed, update month */
-                    if(htime.day < g_time_hw.day){
-                        g_time_hw.day = htime.day;
-                        htime.month = cmos_reg_read(RTC_MONTH);
+                /* Days overflowed, check month */
+                if(0 == g_time_hw.day){
+                    g_time_hw.month = ((g_time_hw.month + 1) % 12);
 
-                        /* If the day rolled over, also update the weekday */
-                        g_time_hw.weekday = cmos_reg_read(RTC_WEEKDAY);
-
-                        /* Month overflowed, update year */
-                        if(htime.month < g_time_hw.month){
-                            g_time_hw.month = htime.month;
-                            g_time_hw.year = cmos_reg_read(RTC_YEAR);
-                        }
-
-                    }
+                    /* Month overflowed, increment year */
+                    g_time_hw.year++;
                 }
-
             }
-        }else{
-            g_time_hw.seconds = htime.seconds;
+
         }
-    }else{
-        /* An external source updated the time, so we have to read everything */
-        cmos_sync_hw_time(); 
-        g_rtc_conf.async_update = 0;
     }
 }
 
