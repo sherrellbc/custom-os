@@ -1,11 +1,11 @@
 target remote localhost:10000
 set disassembly-flavor intel
 
-file ./kernel.elf
+#file ./kernel.elf
 
 # Default breakpoints
-break default_handler
-break time_systick_handler
+#break default_handler
+#break time_systick_handler
 
 # Layout schema
 layout asm
@@ -14,5 +14,5 @@ layout regs
 
 #display/w $esp
 #display/w $eax
-
+set architecture i8086
 c

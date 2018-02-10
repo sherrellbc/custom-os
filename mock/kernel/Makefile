@@ -1,6 +1,7 @@
 # Output config
 #SYSROOT     ?= $(shell pwd)/../sysroot
 SRCROOT         = ../../
+TOOLS_DIR 		= ../../tools/
 SYSROOT         = .sysroot
 BUILD           = .build
 INCLUDEDIR      = /usr/include
@@ -11,10 +12,13 @@ LIB_DIR         = ../../lib
 BUILD_STR       = \e[1;34mBuilding $@\e[0m
 
 # System resources
-export CC=${HOST}-gcc --sysroot=$(BUILD) -isystem=$(INCLUDEDIR) -D__KERN__
-export LD=${HOST}-ld
-export AR=${HOST}-ar
-export AS=${HOST}-as
+BOCHS=~/Downloads/bochs/bochs-2.6.9/bochs
+GDB=~/Downloads/gdb/gdb-8.1.0.20180206/gdb/gdb
+OBJCOPY=${HOST}-objcopy
+CC=${HOST}-gcc --sysroot=$(BUILD) -isystem=$(INCLUDEDIR) -D__KERN__
+LD=${HOST}-ld
+AR=${HOST}-ar
+AS=${HOST}-as
 
 # Note: 
 #   --sysroot and -L are required for ld if invoking directly
@@ -73,8 +77,10 @@ install-final-bootloader:
 	echo "  boot" >> $(GRUBCFG)
 	echo "}" >> $(GRUBCFG)
 
-sysroot-iso: sysroot
-	grub-mkrescue --output=mock.iso $(SYSROOT)
+sysroot-iso: sysroot rm_loader
+	cp $(ARCH_DIR)/boot/rm_loader.img $(SYSROOT)/boot/
+	xorriso -as mkisofs -R -J -c boot/boot.catalog -b boot/rm_loader.img -no-emul-boot -o mock.iso ./.sysroot
+#	grub-mkrescue --output=mock.iso $(SYSROOT)
 
 GDB_DEBUG=
 ifneq ($(DEBUG),)
@@ -84,8 +90,11 @@ runq: sysroot-iso
 	qemu-system-i386 $(GDB_DEBUG) -boot d -cdrom mock.iso 
 #	qemu-system-i386 $(GDB_DEBUG) -d int,cpu_reset -boot d -cdrom mock.iso 
 
+gdb:
+	$(GDB) -x $(TOOLS_DIR)/qemu_debug.gdb
+
 runb: sysroot-iso
-	bochs -qf ../../tools/bochs.config -rc ../../tools/bochs.cmds
+	$(BOCHS) -qf $(TOOLS_DIR)/bochs.config -rc $(TOOLS_DIR)/bochs.cmds
 
 .c.o:
 	$(CC) -MD -c $< -o $@ $(CFLAGS) $(CPPFLAGS)

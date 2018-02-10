@@ -8,6 +8,10 @@ CFLAGS      += $(KERNEL_ARCH_CFLAGS)
 CPPFLAGS    += $(KERNEL_ARCH_CPPFLAGS)
 LDFLAGS     += $(KERNEL_ARCH_LDFLAGS)
 
+rm_loader:
+	$(CC) -m16 -c $(ARCH_DIR)/boot/rm_loader.S -o $(ARCH_DIR)/boot/rm_loader.o
+	$(OBJCOPY) -O binary $(ARCH_DIR)/boot/rm_loader.o --only-section=.text $(ARCH_DIR)/boot/rm_loader.img
+
 KERNEL_EARLY_PLATFORM_INIT=\
     $(ARCH_DIR)/boot/loader.o \
     $(ARCH_DIR)/boot/boot.o \
@@ -31,4 +35,4 @@ KERNEL_MISC_OBJS=\
 
 KERNEL_ARCH_OBJS=$(KERNEL_EARLY_PLATFORM_INIT) $(KERNEL_IRQ_OBJS) $(KERNEL_MISC_OBJS)
 KOBJS+=$(KERNEL_ARCH_OBJS) 
-CLEAN_OBJS+=$(KOBJS)
+CLEAN_OBJS+=$(KOBJS) $(ARCH_DIR)/boot/rm_loader.o $(ARCH_DIR)/boot/rm_loader.img
