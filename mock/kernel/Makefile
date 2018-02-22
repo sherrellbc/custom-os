@@ -13,7 +13,7 @@ BUILD_STR       = \e[1;34mBuilding $@\e[0m
 
 # System resources
 BOCHS=~/Downloads/bochs/bochs-2.6.9/bochs
-GDB=~/Downloads/gdb/gdb-8.1.0.20180206/gdb/gdb
+GDB=gdb
 OBJCOPY=${HOST}-objcopy
 CC=${HOST}-gcc --sysroot=$(BUILD) -isystem=$(INCLUDEDIR) -D__KERN__
 LD=${HOST}-ld
@@ -82,12 +82,15 @@ sysroot-iso: sysroot rm_loader
 	xorriso -as mkisofs -R -J -c boot/boot.catalog -b boot/rm_loader.img -no-emul-boot -o mock.iso ./.sysroot
 #	grub-mkrescue --output=mock.iso $(SYSROOT)
 
+hd-bootable:
+	./create_hd_img.sh
+
 GDB_DEBUG=
 ifneq ($(DEBUG),)
     GDB_DEBUG=-S -gdb tcp::10000
 endif
-runq: sysroot-iso
-	qemu-system-i386 $(GDB_DEBUG) -boot d -cdrom mock.iso 
+runq: sysroot-iso hd-bootable
+	qemu-system-i386 $(GDB_DEBUG) -boot c qemu_hd.bin
 #	qemu-system-i386 $(GDB_DEBUG) -d int,cpu_reset -boot d -cdrom mock.iso 
 
 gdb:

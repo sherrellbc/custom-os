@@ -9,7 +9,7 @@ CPPFLAGS    += $(KERNEL_ARCH_CPPFLAGS)
 LDFLAGS     += $(KERNEL_ARCH_LDFLAGS)
 
 rm_loader:
-	$(CC) -m16 -c $(ARCH_DIR)/boot/rm_loader.S -o $(ARCH_DIR)/boot/rm_loader.o
+	$(CC) -m16 -c -Wl,-Ttext-segment=0x7c00 $(ARCH_DIR)/boot/rm_loader.S -o $(ARCH_DIR)/boot/rm_loader.o
 	$(OBJCOPY) -O binary $(ARCH_DIR)/boot/rm_loader.o --only-section=.text $(ARCH_DIR)/boot/rm_loader.img
 
 KERNEL_EARLY_PLATFORM_INIT=\
