@@ -78,8 +78,8 @@ install-final-bootloader:
 	echo "}" >> $(GRUBCFG)
 
 sysroot-iso: sysroot rm_loader
-	cp $(ARCH_DIR)/boot/rm_loader.img $(SYSROOT)/boot/
-	xorriso -as mkisofs -R -J -c boot/boot.catalog -b boot/rm_loader.img -no-emul-boot -o mock.iso ./.sysroot
+	cp $(ARCH_DIR)/boot/rm_loader.bin $(SYSROOT)/boot/
+	xorriso -as mkisofs -R -J -c boot/boot.catalog -b boot/rm_loader.bin -no-emul-boot -o mock.iso ./.sysroot
 #	grub-mkrescue --output=mock.iso $(SYSROOT)
 
 hd-bootable:
